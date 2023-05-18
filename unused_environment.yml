@@ -1,0 +1,7 @@
+name: citibike-pipeline
+dependencies:
+  pandas=1.5.2
+  protobuf=4.21.11
+  pyarrow=10.0.1
+  conda-forge::orjson=3.8.10
+  conda-forge::prefect=2.7.7

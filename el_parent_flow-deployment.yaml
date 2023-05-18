@@ -1,0 +1,42 @@
+###
+### A complete description of a Prefect Deployment for flow 'el-parent-flow'
+###
+name: sbh-nycitibike-deployment
+description: Prefect flow via cloud run/docker that will pull from citibike rides monthly and add to cloud storage.
+version: 7a3164a38a501da2fe729314da60c55e
+# The work queue that will handle this deployment's runs
+work_queue_name: default
+work_pool_name: null
+tags: []
+parameters: {}
+schedule: 
+    cron: 0 3 10 * *
+    timezone: America/New_York
+is_schedule_active: true
+infra_overrides: {}
+infrastructure:
+  type: process
+  env: {}
+  labels: {}
+  name: null
+  command: null
+  stream_output: true
+  working_dir: null
+  block_type_slug: process
+  _block_type_slug: process
+
+###
+### DO NOT EDIT BELOW THIS LINE
+###
+flow_name: el-parent-flow
+manifest_path: null
+storage: null
+path: /Users/shazeltine/Documents/Projects/data_pipeline_citibike
+entrypoint: prefect/el_from_citibike_to_gcs.py:el_parent_flow
+parameter_openapi_schema:
+  title: Parameters
+  type: object
+  properties: {}
+  required: null
+  definitions: null
+timestamp: '2023-05-18T20:44:45.197670+00:00'

@@ -1,43 +1,75 @@
-# TO DO
-* Define naming conventions
-
-
-NOTES
 # Overview
 
-In this project, we set up a basic ELT flow that pulls each monthly citibike ride report, clean it up, and move it to a data warehouse for analysis. 
+In this project, we set up a basic EL flow that pulls a monthly report of NYC's [CitiBike](https://citibike.com) rides, cleans it up, and moves it to a data lake for analysis. A separate project will address the analysis process.
 
 The basic structure can be applied to any EL needs - though the parts of the core python script that access and transform data will need to be updated. 
 
-It is intended to be easily replicable, and so looks for opportunities to skip over GUIs (especially in GCP) and attempts to leverage one or two schell scripts. However, GUIs can be very helpful to understand the structure of things like Google Cloud Platform. 
+It is intended to be easily replicable, and so looks for opportunities to skip over GUIs (especially in GCP), uses basic shell scripts, and exclusively free (or effectively free) services. However, GUIs can be very helpful to understand the structure of things like Google Cloud Platform, Prefect, etc.
 
 It references a few other projects and write-ups, listed at the bottom. 
 
 ## Problem Statement
 New York's Citibike publishes monthly a file that lists every ride in the citibike system. We want to take these out of the external storage and into our data warehouse in order to run analyses against 
 
-
-
 # Process
 
 ## 0. Project/Environment/Repo set-up
 
-Naming convention:
-* GCP
-** Projects: 
-** Service Accounts:
-** Resources: 
-* Prefect
-** 
-* 
+### Naming convention
 
+First, it's helpful to describe a naming convention. I have a bias toward underscores, but the reach of "big hyphen" and their powerful lobby cannot be understated. We thus use hyphens in naming resources. 
 
-Notes: 
-- https://github.com/github/gitignore/tree/main is a helpful resource for creating your .gitignore.
-- If you've recently upgraded from an Intel to an Apple Silicon mac, you may have some issues. Brief discussion [here](https://tktktkt.com). 
+The format for GCP Projects is: `[org]-[project]-[component]-[resource/env]`, using  env and resource/family of resources only if resources are split across multiple GCP projects. Else `main`. 
+
+The general format for resources will be:
+- [org prefix] - (Optional) I use my initials out of habit. In a business setting, this may be the org or dept name.
+- [project] - Broad description of the project
+- [component] - The part of the project owned within. For example "pipeline"
+- [resource] - 3 letter abbreviation of the resource, plus 3 letter letter if ______
+- [description] - 
+- [location/zone] - 2 letters for region; 1-2 for cardinal direction; 1 number; 1 letter if zoned
+- [env] - 1 letter denoting [d]ev, [s]tage or [p]rod. 
+- [version/iteration number]- Terraform has a random_id generator, though for learning/personal development, I find using sequential numbers helpful. Thus the format 
+- [resource number]- Only used if multiple identical resources are created.
+
+Yielding: 
+- GCP
+  - Project: `sbh-nycitibike-pipeline-main`
+  - Artifact Repository Repo: `sbh-nycitibike-pipeline-ar-vmrepo-usc1-p01`, 
+  - Compute Engine Schedule ("policy"): `sbh-nycitibike-pipeline-gcepol-vmsched-usc1-p01`, 
+  - Compute Engine Image: `sbh-nycitibike-pipeline-gceimg-image-usc1-p01`,  
+  - Compute Engine Instance: `sbh-nycitibike-pipeline-gceimg-image-usc1-p01-001`,  
+  - Cloud Storage Bucket: `sbh-nycitibike-pipeline-gcsdlb-rides-p01`,
+  - *Exception:* Service Accounts: `prefect-sa1-[4-character hex]`, (Service accounts are in email form `[sa_name]@[proj_name].iam.gserviceaccount.com` so do not need those descriptors.)
+  - *Exception:* BigQuery Dataset: `gbqdwh_rides` (Datasets may be organized in various ways - by department, by source/stage/final, etc. All data sets are quereied within their GCP Project, so there is no need to include project info.) 
+- Prefect
+  - Workspace: `[org]-[project]-[component]-[env]-pfct-ws` (`sbh-nycitibike-pipeline-p-pfct-ws`)
+  - Block: `[org]-[project]-[component]-[env]-pfct-blk-[block-type]` (`sbh-nycitibike-pipeline-p-pfct-blk-gcp-cred`, `sbh-nycitibike-pipeline-p-pfct--blk-gcs-dlb`, etc.)
+  - Scripts/Flows 
+
+### Git
+https://github.com/github/gitignore/tree/main is a helpful resource for creating your .gitignore.
+
+### Apple Silicon
+If you've recently upgraded from an Intel to an Apple Silicon mac, you may have some issues. Brief discussion [here](https://tktktkt.com). 
+
+### Environment setup
+
+We used conda to manage virtual environments and poetry to install packages, but this is not strictly necessary. (pip can install via requirements.txt; conda can install via environment.yml.) For poetry we create the `pyproject.toml` file.
+
+```zsh
+conda create --name citibike-pipeline -c conda-forge python=3.11 pip
+conda activate citibike-pipeline
+conda install poetry
+curl -sSL https://install.python-poetry.org | python3 -
+poetry install --no-root
+```
+
 
 ## 1. GCP Set Up
 This project runs on Google Cloud Platform, because GCP gives new users $300 in credit to be spent over 90 days. (It seems crazy that AWS doesn't offer the same, but I suppose market dominance has its privileges.) You need to set up a ($300 in free credit for the first 90 days) Google Cloud Account. Directions to do so abound, but googling "GCP", going to the first result, and clicking "get started for free" is a pretty good approach. No credit card is required. 
+
+Install [gcloud CLI](https://cloud.google.com/sdk/docs/install-sdk).
 
 Make sure you are logged in in your browser, with the gmail account you used for the free gcp credit. Then cd to the directory you'd like to use for development and run the following to login:
 ```gcloud auth login ```
@@ -46,64 +78,48 @@ Follow the steps to login with your gmail account. Then run the following to cre
 
 ```
 gcloud projects create [[your-project-name]] --name="Descriptive and Customized Project Name"
-gcloud config set project [[your-project-name]]```
+gcloud config set project [[your-project-name]]
+```
 
-By default, GCP gives users almost no access to its products. You, the admin, need to turn them on first. You'll need to turn on the following APIs by searching them in the Ggoogle Gloud console search , or by running the following:
+Enable billing by opening [billing settings](https://console.cloud.google.com/billing/projects), going to my projects, selecting the kebab and clicking Change Billing. Set the Billing Account (default is okay). 
+
+By default, GCP gives users almost no access to its products. You, the admin, need to turn them on first. You'll need to turn on the following APIs by searching them in the Google Gloud console search , or by running the following:
 ```zsh 
-gcloud services enable artifactregistry.googleapis.com bigquery.googleapis.com bigquerymigration.googleapis.com bigquerystorage.googleapis.com compute.googleapis.com containerregistry.googleapis.com oslogin.googleapis.com pubsub.googleapis.com run.googleapis.com servicemanagemen.googleapis.com serviceusage.googleapis.com storage-api.googleapis.com storage-component.googleapis.com storage.googleapis.com
+gcloud services enable artifactregistry.googleapis.com bigquery.googleapis.com bigquerymigration.googleapis.com bigquerystorage.googleapis.com compute.googleapis.com artifactregistry.googleapis.com oslogin.googleapis.com pubsub.googleapis.com run.googleapis.com servicemanagement.googleapis.com serviceusage.googleapis.com storage-api.googleapis.com storage-component.googleapis.com storage.googleapis.com
 ```
 
-Cconfirm you were successful by running
-```gcloud services list```
+Cconfirm you were successful by running `gcloud services list`.
 
-Now, within our project, a "service account" needs to be created, give that service account permissions, and download a service account key. You can do this all with one account (simplest), or you can separate them with more granular access (eg one that can create the infrastructure using terraform and another that can only read/write via prefect). Then we need to give that service account permission to access the GCP products we just enabled. 
+*Note: The rest of this section can be skipped if you are comfortable building most infrastructure with Terraform.* 
 
-A slightly more granular approach might look like: 
-* Terraform Service Account (Can be used as default/local.)
-** roles/compute.admin
-** roles/storage.admin
-** roles/run.admin
-** 
-* Prefect Service Account
-** roles/compute.admin
-** roles/storage.admin
-** roles/run.admin
+Now, within our project, a "service account" needs to be created, which will hold the permissions to access the products/resources turned on above. Once created, give that service account permissions, and download a service account key. You can do this all with one account (simplest), or you can separate them with more granular access (eg one that can create the infrastructure using terraform, another that can only read/write via Prefect, etc.) Then we need to give that service account permission to access the GCP products we just enabled. 
 
-Again this can be done entirely in the GCP GUI, but running the following ensures replicability by running through CLI: 
+(A slightly more granular approach to service accounts might look like:)
+* Terraform Service Account (Can be used as default/local.): Admin roles on Compute, Storage, BigQuery, and 
+* Prefect Service Account: Storage Object Creator, Cloud Run Invoker, etc. 
+* And so on.
 
+Again this can be done entirely in the GCP GUI, but running the following ensures replicability by running through CLI (example follows). Adding permissions can also be done by passing a json with the roles (`gcloud projects get-iam-policy my-project --format json > ~/policy.json`). Roles are described [here](https://cloud.google.com/iam/docs/understanding-roles).
+
+If you are following these steps, rather than using Terraform, your Service Account won't necessarily need the 4-char random hex. You will be told if it is not unique.
 ```zsh
-gcloud iam service-accounts create your-service-account-name \
+gcloud iam service-accounts create SA_NAME \
     --description="Descriptive name, maybe one that describes the EL process" \
-    --display-name="My EL service account"
+    --display-name="SA_NAME"
 ```
 
-# Add permissions
-# Roles source: https://cloud.google.com/iam/docs/understanding-roles
-# this can alternatively be done by passing a json with the roles
-# --> $ gcloud projects get-iam-policy my-project --format json > ~/policy.json
-
 ```zsh
-$ gcloud projects add-iam-policy-binding zoomcamp-project-385518 \
-    --member="serviceAccount:run-citibike-el@zoomcamp-project-385518.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding SA_NAME \
+    --member="serviceAccount:SA_NAME@SA_NAME.iam.gserviceaccount.com" \
     --role="roles/storage.admin"
 
-$ gcloud projects add-iam-policy-binding zoomcamp-project-385518 \
-    --member="serviceAccount:run-citibike-el@zoomcamp-project-385518.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding SA_NAME \
+    --member="serviceAccount:SA_NAME@SA_NAME.iam.gserviceaccount.com" \
     --role="roles/run.admin"
-$ gcloud projects add-iam-policy-binding zoomcamp-project-385518 \
-    --member="serviceAccount:run-citibike-el@zoomcamp-project-385518.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding SA_NAME \
+    --member="serviceAccount:SA_NAME@SA_NAME.iam.gserviceaccount.com" \
     --role="roles/compute.admin"
 ```
-
-???download key??
-```zsh
-gcloud iam service-accounts keys create KEY_FILE \
-    --iam-account=SA_NAME@PROJECT_ID.iam.gserviceaccount.com```
-
-    # Create Service Account KEY
-$ gcloud iam service-accounts keys create sa_keys/run-citibike-el1.json \
-    --iam-account=run-citibike-el@zoomcamp-project-385518.iam.gserviceaccount.com
-dasd
 
 At this point, we'll pause to set up some other pieces outside of GCP. 
 ```
@@ -124,35 +140,48 @@ brew upgrade hashicorp/tap/terraform
 ```
 Finally enable tab completion by running `touch ~/.bashrc` if running bash, or `touch ~/.zshrc` if running zsh.
 
-Confirm successful installation by running `terraform -help`
+Confirm successful installation by running `terraform -help`.
+
+### Create bucket for terraform state storage. 
+Terraform can store the terraform state locally or in the cloud. We use cloud storage, but the bucket it is stored in must be created by you, Terraform will not create it. 
+
+```
+gcloud storage buckets create gs://z_infra_resources
+```
 
 ### Design Infrastructure via Terraform
 
 Terraform can be leveraged quite simply by creating three docs in ??your repo??: `main.tf`, `variables.tf` and `terraform.tfvars`.
 
 Main will tell Terraform what to do, and how to do it:
-** Terraform Versioning
-** Infrastructure technologies/providers 
-** Infrastructure to create
+  * Terraform Versioning
+  * Infrastructure technologies/providers 
+  * Infrastructure to create
 
 Variables describes all the variable inputs, including optionally setting defaults.
 terraform.tfvars is where the variables are set. 
-** The GCP project
-** Region for creating assets
-** Names, etc. for the assets to be created.
+  * The GCP project
+  * Region for creating assets
+  * Names, etc. for the assets to be created.
 
-Note that almost all GCP pieces can be created via Terraform. For example, instead of running `gcloud artifacts repositories create ...` to create the repo, a repo can be created with the documentation here: https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/artifact_registry_repository. The same goes for compute instance. https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/compute_instance
+Note that almost all GCP pieces can be created via Terraform. For example, instead of running `gcloud artifacts repositories create ...` to create the repo, a repo can be created with the documentation [here](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/artifact_registry_repository). The same goes for compute instance, as demonstrated in the Terraform files.
 
 
 ### Build using Terraform
 You will initialize using the .tfs you built, then run plan to review changes in the local file and align with you on an implementation plan. Finally apply approves that implementation plan and tells GCP to run it. 
 
 ```
-terraform init
-terraform plan
-terraform apply
+terraform -chdir=terraform/ init
+terraform -chdir=terraform/ plan
+terraform -chdir=terraform/ apply
 ```
+*Note: rather than using chdir, you could just cd into the terraform directory.*
 
+One last piece: There is an issue with the terraform main.tf that prevents the Compute instance schedule (aka resource policy) from being added. Pending resolution, that will need to be done through the GUI at https://console.cloud.google.com/iam-admin/iam?authuser=1&project=[[project-name]]. Select the edit icon on `....-compute@developer.gserviceaccount.com` and add the role Compute Admin.
+
+```
+gcloud compute instances add-resource-policies sbh-nycitibike-pipeline-gceimg-image-usc1-p01-001 --resource-policies=sbh-nycitibike-pipeline-gcepol-vmsched-usc1-p01
+```
 ### CLI alternatives
 
 To create the Artifact Repo: 
@@ -178,27 +207,41 @@ Prefect can be used locally or via Prefect Cloud to manage/orchestrate data pipe
 * Create Prefect Workspace and Blocks
 * Build a deployment with the Blocks.
 
+First, get a Service Account key for your Prefect Service Account. 
+
+```zsh
+gcloud iam service-accounts keys create KEY_FILE \
+    --iam-account=SA_NAME@PROJECT_ID.iam.gserviceaccount.com```
+
+    # Create Service Account KEY
+$ gcloud iam service-accounts keys create sa_keys/prefect-el-sa1.json \
+    --iam-account=prefect-el-sa1@sbh-nycitibike-pipeline-main.iam.gserviceaccount.com
+```
+
+
 Create the following blocks:
 * GCP Credentials: Paste in the text of the service account key json you downloaded.
 * Google Cloud Storage (GCS): Paste in the name of the GCS Bucket from your terraform. Link the Credentials Block you just made.
 * GitHub: Linking to your GH repo, and using a Personal Access Token
-* GCP Cloud Run Job: Image name in format `[[region]]-docker.pkg.dev/[[project-name]]/[[Artifact Registry Repo Name]]/` (eg `us-central1-docker.pkg.dev/zoomcamp-project-385518/citibike-docker-repo/`).
-** Note this name as it hasn't been assigned yet.
+* GCP Cloud Run Job: Image name in format `[[region]]-docker.pkg.dev/[[project-name]]/[[Artifact Registry Repo Name]]/` (eg `us-central1-docker.pkg.dev/prefect-el-sa1-xxxx/citibike-docker-repo/`).
+  * Note this name as it hasn't been assigned yet.
 
 
-prefect deployment build prefect/el_from_citibike_to_gcs.py:el_parent_flow --name citibike-deployment
+prefect deployment build prefect/el_from_citibike_to_gcs.py:el_parent_flow --name sbh-nycitibike-deployment
 
-This will generate a Prefect deployment YAML, to which a schedule can be added
-```schedule: 
-  cron: 0 3 10 * *
-  timezone: America/New_York
+This will generate a Prefect deployment YAML, in which schedule: null and is_schedule_active can be replaced with:
+```yaml
+  schedule: 
+    cron: 0 3 10 * *
+    timezone: America/New_York
+  is_schedule_active: true
 ```
 As well as a description: `"Prefect flow via cloud run/docker that will pull from citibike rides monthly and add to cloud storage."`
 
 
 Now, rebuild using the blocks and updated yaml. 
-```
-prefect deployment build prefect/el_from_citibike_to_gcs.py:el_parent_flow --name citibike-deployment --storage-block github/gh-block-citibike  --infra-block cloud-run-job/citibike-cloudrun-block --output el_parent_flow-deployment.yaml --apply
+```zsh
+prefect deployment build prefect/el_from_citibike_to_gcs.py:el_parent_flow --name sbh-nycitibike-deployment --storage-block github/gh-block-citibike  --infra-block cloud-run-job/citibike-cloudrun-block --output el_parent_flow-deployment.yaml --apply
 ```
 
 Finally, generate a [Prefect API](https://app.prefect.cloud/my/api-keys) key. 
@@ -206,8 +249,8 @@ Finally, generate a [Prefect API](https://app.prefect.cloud/my/api-keys) key.
 ## 4. Connect Prefect to Google Compute Engine 
 
 If you did not create a compute instance with Terraform, you'll need to do so via CLI:
-** create schedule, as this process is designed to be always up, but that's expensive.
-** Then create the vm with the schedule you just made.
+  * create schedule, as this process is designed to be always up, but that's expensive.
+  * Then create the vm with the schedule you just made.
 
 ```zsh
 gcloud compute resource-policies create instance-schedule citibike_monthly \
@@ -224,7 +267,7 @@ gcloud compute instances create prefect-citibike-compute-instance \
 --image=ubuntu-2004-focal-v20230302 \
 --image-project=ubuntu-os-cloud \
 --machine-type=e2-micro \
---service-account=run-citibike-el@zoomcamp-project-385518.iam.gserviceaccount.com \
+--service-account=SA_NAME@SA_NAME.iam.gserviceaccount.com \
 --zone=us-central1-a \
 --preemptible
 ```
@@ -236,9 +279,9 @@ gcloud compute ssh prefect-citibike-compute-instance --zone=us-central1-a
 ```
 
 Now, within the VM, you have a "factory" Llinux install and can run whatever commands you want. In order to run the processes needed for the purposes of this project:
-** Conda needs to be installed. 
-** The machine needs to be told each time it boots up to to start a conda environment and run all commands from within that env.
-** Prefect packages need to be installed
+  * Conda needs to be installed. 
+  * The machine needs to be told each time it boots up to to start a conda environment and run all commands from within that env.
+  * Prefect packages need to be installed
 
 
 ### Create installation shell scripts
@@ -251,7 +294,7 @@ nano install_pt1.sh
 ```
 
 Paste the following into install_pt.sh (hit ctrl+x, then y, then enter to exit and save):
-```
+```sh
 #!/bin/bash
 # Go to home directory
 cd ~
@@ -271,7 +314,7 @@ conda --version
 Note that different guides online recommend different paths to direct the `bash Ananconda...` to /anaconda/... or /anaconda3/... Make sure you are consistent between this line and the `echo` line you use to write to .bashrc.
 
 Then Run `nano install_pt2.sh` to open and edit, and paste the following into that file:
-```
+```sh
 #!/bin/bash
 sudo apt-get update -y
 sudo apt-get upgrade -y
@@ -282,14 +325,14 @@ echo 'export prefect agent start -q default' >> ~/.bashrc
 
 ### Make shell scripts executable
 At this point the shell scripts are idle files, rather than executable programs/scripts. You will need to make them both executable by running:
-```
+```bash
 sudo chmod +x asldkjfsjlk.sh sdasda.sh
 ```
 
 ### Run shell scripts
 Run the following commands. The reason there are two separate scripts is that the `source ~/.bashrc` is very hard to replicate within a script (see [this discussion](https://askubuntu.com/a/1041348) for details) and pasting the simple command is much easier than finding a workaround. This command reloads the shell and allows changes made to it (initializing Anaconda on boot and directing commands to be run via Anaconda) to be accessed.
 
-```
+```bash
 ./install_pt1.sh
 source ~/.bashrc
 ./install_pt2.sh
@@ -311,7 +354,7 @@ COPY prefect/el_from_citibike_to_gcs.py prefect/el_from_citibike_to_gcs.py
 
 RUN pip install -r docker-requirements.txt --trusted-host pypi.python.org
 
-ENTRYPOINT [ "python", "prefect/[name_of_pipeline_script].py" ]
+# ENTRYPOINT [ "python", "prefect/[name_of_pipeline_script].py" ]
 ```
 
 Create the `docker-requirements.txt`, which will become the docker image's requirements.txt. (Note that pyarrow there to assist in parquetizing the input data, which is done less out of necessity than a desire to explore different formats. the orjson requirement may not be necessary, but some later builds of orjson seemed to have issues on Apple Silicon.)
@@ -339,12 +382,18 @@ Note the `.`!!!, which is the path docker to buildin (`.` is current directory).
 
 ```zsh 
 docker build -t citibike-rides:v0 .
-docker tag citibike-rides:v0 us-central1-docker.pkg.dev/zoomcamp-project-385518/citibike-docker-repo/citibike-rides:v0
-docker push us-central1-docker.pkg.dev/zoomcamp-project-385518/citibike-docker-repo/citibike-rides:v0
+docker tag citibike-rides:v0 us-central1-docker.pkg.dev/SA_NAME/citibike-docker-repo/citibike-rides:v0
+docker push us-central1-docker.pkg.dev/SA_NAME/citibike-docker-repo/citibike-rides:v0
 ```
+
+# Complete!
+At this point, the data pipeline should be functional. You should be able to manually trigger the flow from within Prefect and see data from the most recent month updated in Cloud Storage. 
+
+### Next Step
+The next step will be to trigger and run the analytics processes that turn the raw data into a usable analysis. That can easily be done within Prefect, but will be separated into a separate Project. 
 
 
 # Notes/Alternatives
-This is a very simple process that could be done in a variety of ways. 
+Ultimately, the work that happens here is a very simple process that could be done in a variety of different ways. 
 
-However, while the method developed here is, relatively, overwrought for such an application, doing so affords more opportunities to scale, layer in complexity, manage/implement across a team, reproduce, diagnose issues, etc. Myriad more simple and more complex solutions abound.
+While the method developed here is, relatively, overwrought for such an application, doing so affords more opportunities to scale, layer in complexity, manage/implement across a team, reproduce, diagnose issues, etc., myriad more simple and more complex solutions abound.

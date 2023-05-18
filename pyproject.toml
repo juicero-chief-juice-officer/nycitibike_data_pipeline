@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "citibike-poetry"
+version = "1.0"
+description = "Run terraform and prefect."
+authors = ["shazeltine <stephenhazeltine@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+omegaconf = "^2.3.0"
+pandas = "^2.0.0"
+prefect = "^2.10.2"
+prefect-gcp = {extras = ["cloud-storage"], version = "^0.4.0"}
+greenlet = "^2.0.2"
+pyarrow = "^11.0.0"
+
+[tool.poetry.group.dev.dependencies]
+jupyterlab = "3.5.3"
+isort = "^5.12.0"
+yapf = "^0.32.0"
+toml = "^0.10.2"
+
+[tool.yapf]
+based_on_style = "facebook"
+indent_width = 4
+column_limit = 100
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
