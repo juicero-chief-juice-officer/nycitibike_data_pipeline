@@ -44,7 +44,7 @@ Yielding:
   - *Exception:* BigQuery Dataset: `gbqdwh_rides` (Datasets may be organized in various ways - by department, by source/stage/final, etc. All data sets are quereied within their GCP Project, so there is no need to include project info.) 
 - Prefect
   - Workspace: `[org]-[project]-[component]-[env]-pfct-ws` (`sbh-nycitibike-pipeline-p-pfct-ws`)
-  - Block: `[org]-[project]-[component]-[env]-pfct-blk-[block-type]` (`sbh-nycitibike-pipeline-p-pfct-blk-gcp-cred`, `sbh-nycitibike-pipeline-p-pfct--blk-gcs-dlb`, etc.)
+  - Block: `[org]-[project]-[component]-[env]-pfct-blk-[block-type]` (`sbh-nycitibike-pipeline-p-pfct-blk-gcp-cred`, `sbh-nycitibike-pipeline-p-pfct-blk-gcs-dlb`, etc.)
   - Scripts/Flows 
 
 ### Git
@@ -202,22 +202,21 @@ gcloud artifacts repositories describe citibike-docker-repo \
 Prefect can be used locally or via Prefect Cloud to manage/orchestrate data pipeline tasks (an alternative to Apache AirFlow ). It will come to tell Cloud Run to run the flow ....
 
 ### Prefect Cloud
+We need to: 
 * Create Prefect Cloud account
 * Create Prefect Service Account (done previously)
 * Create Prefect Workspace and Blocks
 * Build a deployment with the Blocks.
 
-First, get a Service Account key for your Prefect Service Account. 
-
+`cd` to your prefect directory and get a Service Account key for your Prefect Service Account:
 ```zsh
 gcloud iam service-accounts keys create KEY_FILE \
     --iam-account=SA_NAME@PROJECT_ID.iam.gserviceaccount.com```
 
     # Create Service Account KEY
-$ gcloud iam service-accounts keys create sa_keys/prefect-el-sa1.json \
+$ gcloud iam service-accounts keys create ../sa_keys/prefect-el-sa1.json \
     --iam-account=prefect-el-sa1@sbh-nycitibike-pipeline-main.iam.gserviceaccount.com
 ```
-
 
 Create the following blocks:
 * GCP Credentials: Paste in the text of the service account key json you downloaded.
@@ -226,10 +225,12 @@ Create the following blocks:
 * GCP Cloud Run Job: Image name in format `[[region]]-docker.pkg.dev/[[project-name]]/[[Artifact Registry Repo Name]]/` (eg `us-central1-docker.pkg.dev/prefect-el-sa1-xxxx/citibike-docker-repo/`).
   * Note this name as it hasn't been assigned yet.
 
+Build the Prefect deployment for your flow.
+```
+prefect deployment build prefect/el_from_citibike_to_gcs.py:el_parent_flow --name sbh-nycitibike-deployment --cron "0 3 10 * *" --timezone 'America/New_York'
+```
 
-prefect deployment build prefect/el_from_citibike_to_gcs.py:el_parent_flow --name sbh-nycitibike-deployment
-
-This will generate a Prefect deployment YAML, in which schedule: null and is_schedule_active can be replaced with:
+Alternatively, running without passing the cron/timezone will generate a Prefect deployment YAML, in which schedule: null and is_schedule_active can be replaced with:
 ```yaml
   schedule: 
     cron: 0 3 10 * *
@@ -241,7 +242,7 @@ As well as a description: `"Prefect flow via cloud run/docker that will pull fro
 
 Now, rebuild using the blocks and updated yaml. 
 ```zsh
-prefect deployment build prefect/el_from_citibike_to_gcs.py:el_parent_flow --name sbh-nycitibike-deployment --storage-block github/gh-block-citibike  --infra-block cloud-run-job/citibike-cloudrun-block --output el_parent_flow-deployment.yaml --apply
+prefect deployment build prefect/el_from_citibike_to_gcs.py:el_parent_flow --name sbh-nycitibike-deployment --storage-block github/sbh-nycitibike-pipeline-p-pfct-blk-ghb-rep  --infra-block cloud-run-job/sbh-nycitibike-pipeline-p-pfct-blk-gcr-job --output el_parent_flow-deployment.yaml --apply
 ```
 
 Finally, generate a [Prefect API](https://app.prefect.cloud/my/api-keys) key. 
@@ -262,7 +263,7 @@ gcloud compute resource-policies create instance-schedule citibike_monthly \
     <!-- [--initiation-date=INITIATION_DATE] \ -->
     <!-- [--end-date=END_DATE] -->
 
-gcloud compute instances create prefect-citibike-compute-instance \
+gcloud compute instances create sbh-nycitibike-pipeline-gceimg-image-usc1-p01-001 \
 --resource-policies=[scheudlename]
 --image=ubuntu-2004-focal-v20230302 \
 --image-project=ubuntu-os-cloud \
@@ -275,7 +276,7 @@ gcloud compute instances create prefect-citibike-compute-instance \
 ## Set up VM
 Access that VM via ssh.
 ```zsh
-gcloud compute ssh prefect-citibike-compute-instance --zone=us-central1-a
+gcloud compute ssh sbh-nycitibike-pipeline-gceimg-image-usc1-p01-001 --zone=us-central1-a
 ```
 
 Now, within the VM, you have a "factory" Llinux install and can run whatever commands you want. In order to run the processes needed for the purposes of this project:
@@ -285,7 +286,7 @@ Now, within the VM, you have a "factory" Llinux install and can run whatever com
 
 
 ### Create installation shell scripts
-This is done in two stages via shell scripts. First Anaconda is set up and saved, then Prefect. 
+This is done in two stages via shell scripts. First Anaconda is set up and saved, then Prefect. In a future iteration, this may be done by Terraform upon creating the instance.
 
 Create two shell scripts (`touch` creates, `nano` opens for editing): 
 ```bash
@@ -313,7 +314,7 @@ conda --version
 ```
 Note that different guides online recommend different paths to direct the `bash Ananconda...` to /anaconda/... or /anaconda3/... Make sure you are consistent between this line and the `echo` line you use to write to .bashrc.
 
-Then Run `nano install_pt2.sh` to open and edit, and paste the following into that file:
+Then run `nano install_pt2.sh` to open and edit, and paste the following into that file:
 ```sh
 #!/bin/bash
 sudo apt-get update -y
@@ -326,7 +327,7 @@ echo 'export prefect agent start -q default' >> ~/.bashrc
 ### Make shell scripts executable
 At this point the shell scripts are idle files, rather than executable programs/scripts. You will need to make them both executable by running:
 ```bash
-sudo chmod +x asldkjfsjlk.sh sdasda.sh
+sudo chmod +x install_pt1.sh install_pt2.sh
 ```
 
 ### Run shell scripts
@@ -361,7 +362,6 @@ Create the `docker-requirements.txt`, which will become the docker image's requi
 ```requirements.txt
 pandas==1.5.2
 orjson==3.8.10
-prefect
 prefect-gcp[cloud_storage]==0.3.0
 protobuf==4.21.11
 pyarrow==10.0.1
@@ -377,13 +377,13 @@ gcloud auth configure-docker us-central1-docker.pkg.dev
 
 Note the `.`!!!, which is the path docker to buildin (`.` is current directory). 
 * The `-t` flag sets the name and optional tag (`name:tag`) for the image.
-* The tag command tells Docker the specific location it will send the image to, in this case the "google_artifact_registry_repository" created with Terraform.
-* The push command sends the image.
+* The tag command tells Docker the specific location it will send the image to, in this case the "google_artifact_registry_repository" created with Terraform. Format is `us-central1-docker.pkg.dev/[project_name]/[repo_name]` (which can be copied from the Artifact Repository GUI).
+* The push command sends the image to the GCP Artifact Repository.
 
 ```zsh 
-docker build -t citibike-rides:v0 .
-docker tag citibike-rides:v0 us-central1-docker.pkg.dev/SA_NAME/citibike-docker-repo/citibike-rides:v0
-docker push us-central1-docker.pkg.dev/SA_NAME/citibike-docker-repo/citibike-rides:v0
+docker build -t nycitibike-rides-docker:v0 .
+docker tag nycitibike-rides-docker:v0 us-central1-docker.pkg.dev/sbh-nycitibike-pipeline-main/sbh-nycitibike-pipeline-ar-vmrepo-usc1-p01/nycitibike-rides-docker:v0
+docker push us-central1-docker.pkg.dev/sbh-nycitibike-pipeline-main/sbh-nycitibike-pipeline-ar-vmrepo-usc1-p01/nycitibike-rides-docker:v0
 ```
 
 # Complete!

@@ -113,7 +113,7 @@ resource "google_compute_resource_policy" "gce_schedule" {
       schedule = var.gce_policy_sched_start
     }
     vm_stop_schedule {
-      schedule = var.gce_policy_sched_start_stop
+      schedule = var.gce_policy_sched_stop
     }
     time_zone = var.gce_policy_timezone
   }
@@ -126,6 +126,9 @@ resource "google_compute_instance" "default" {
   # resource_policies = [google_compute_resource_policy.gce_schedule.id]
   network_interface {
     network = "default"
+    access_config {
+      network_tier = "STANDARD"
+    }
   }
   boot_disk {
     initialize_params {
@@ -133,6 +136,37 @@ resource "google_compute_instance" "default" {
       size = var.gce_image_size
     }
   }
+
+
+# metadata_startup_script = <<-EOF
+# touch install_pt1.sh install_pt2.sh
+# echo "#!/bin/bash
+# # Go to home directory
+# cd ~
+# # You can change what anaconda version you want on the anaconda site
+# #!/bin/bash
+# wget https://repo.anaconda.com/archive/Anaconda3-2023.03-1-Linux-x86_64.sh
+# bash Anaconda3-2023.03-1-Linux-x86_64.sh -b -p ~/anaconda3
+# rm Anaconda3-2023.03-1-Linux-x86_64.sh
+# echo 'export PATH="~/anaconda3/bin:$PATH"' >> ~/.bashrc 
+# # messy workaround for difficulty running source ~/.bashrc from shell script in ubuntu
+# # sourced from askubuntu question 64387
+# eval '$(cat ~/.bashrc | tail -n +10)'
+# conda init
+# conda update conda
+# conda --version" > install_pt1.sh
+# echo "#!/bin/bash
+# sudo apt-get update -y
+# sudo apt-get upgrade -y
+# pip install prefect prefect-gcp
+# prefect cloud login -k <INSERT_PREFECT_API_KEY>
+# echo 'export prefect agent start -q default' >> ~/.bashrc" > install_pt2.sh
+# sudo chmod +x install_pt1.sh install_pt2.sh
+# ./install_pt1.sh
+# source ~/.bashrc
+# ./install_pt2.sh
+# source ~/.bashrc
+# EOF
 
   # service_account {
   #   # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.

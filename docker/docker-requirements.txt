@@ -1,5 +1,0 @@
-pandas==1.5.2
-orjson==3.8.10
-prefect-gcp[cloud_storage]==0.3.0
-protobuf==4.21.11
-pyarrow==10.0.1

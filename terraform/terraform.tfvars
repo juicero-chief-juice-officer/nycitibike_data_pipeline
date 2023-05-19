@@ -60,12 +60,12 @@ repo_format = "DOCKER"
 gce_policy_name = "sbh-nycitibike-pipeline-gcepol-vmsched-usc1-p01"
 gce_policy_desc = "Runs from 2:45/3 until 3:15am every month on the 10th of the month."
 gce_policy_sched_start = "45 2 10 * *"
-gce_policy_sched_start_stop = "15 3 10 * *"
+gce_policy_sched_stop = "15 3 10 * *"
 # gce_policy_timezone = 'America/New_York' (commented out as we will use default set in variables.tf)
 
 #Compute Engine
 gce_inst_name = "sbh-nycitibike-pipeline-gceimg-image-usc1-p01-001"
-gce_image = "ubuntu-2004-focal-v20230302"
+gce_image = "ubuntu-2004-lts"
 gce_machine_type  = "e2-micro"
 gce_zone  = "us-central1-a"
 gce_image_size = 12

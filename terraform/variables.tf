@@ -91,7 +91,7 @@ variable gce_policy_sched_start {
   default     = "45 2 * * *"
 }
 
-variable gce_policy_sched_start_stop {
+variable gce_policy_sched_stop {
   description = "Cron schedule for stop time"
   type        = string
   #default once a day
