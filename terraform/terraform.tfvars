@@ -17,7 +17,7 @@ svc_accts_and_roles = {
                         description = "SA to be used by Prefect to run services and write to cloud storage."
                         roles=        [
                                         "roles/iam.serviceAccountUser"
-                                      ,  "roles/storage.objectCreator"
+                                      ,  "roles/storage.admin"
                                       , "roles/run.admin"
                                     #   , "roles/compute.imageUser"
                                       ]
@@ -66,9 +66,9 @@ gce_policy_sched_stop = "15 3 10 * *"
 #Compute Engine
 gce_inst_name = "sbh-nycitibike-pipeline-gceimg-image-usc1-p01-001"
 gce_image = "ubuntu-2004-lts"
-gce_machine_type  = "e2-micro"
+gce_machine_type  = "e2-standard-2"
 gce_zone  = "us-central1-a"
-gce_image_size = 12
+gce_image_size = 25
 gce_preemptible = true
 gce_auto_restart = false
 # gce_sa_email = "x@y.iam.gserviceaccount.com"

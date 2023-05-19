@@ -137,8 +137,8 @@ resource "google_compute_instance" "default" {
     }
   }
 
-
-# metadata_startup_script = <<-EOF
+# Not Functional; Do not Use
+# metadata_startup_script = <<SCRIPT
 # touch install_pt1.sh install_pt2.sh
 # echo "#!/bin/bash
 # # Go to home directory
@@ -159,14 +159,14 @@ resource "google_compute_instance" "default" {
 # sudo apt-get update -y
 # sudo apt-get upgrade -y
 # pip install prefect prefect-gcp
-# prefect cloud login -k <INSERT_PREFECT_API_KEY>
+# prefect cloud login -k <INSERT_API_KEY>
 # echo 'prefect agent start -q default' >> ~/.bashrc" > install_pt2.sh
 # sudo chmod +x install_pt1.sh install_pt2.sh
 # ./install_pt1.sh
 # source ~/.bashrc
 # ./install_pt2.sh
 # source ~/.bashrc
-# EOF
+# SCRIPT
 
   # service_account {
   #   # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.
@@ -180,4 +180,6 @@ resource "google_compute_instance" "default" {
   #   preemptible = var.gce_preemptible
   #   automatic_restart = var.gce_auto_restart
   # }
+
+  
 }

@@ -23,6 +23,7 @@ def fetch_data(url: str, filename: str) -> pd.DataFrame: # returns None if no fi
         os.makedirs(tmp_folder)
 
     # We try two different file extensions, as they have changed in the past.
+    # attempt with first (more recent) file format
     try:
         file_extension = '.csv.zip'
         zip_file_name = f"{tmp_folder}/{filename}{file_extension}"
@@ -31,7 +32,7 @@ def fetch_data(url: str, filename: str) -> pd.DataFrame: # returns None if no fi
         with urlopen(full_url) as response:
             with open(zip_file_name, 'wb') as out_file:
                 shutil.copyfileobj(response, out_file)
-                del response
+                del response # manage memory
         found_file = True
     except:
         try: #try alternative file extension
@@ -41,7 +42,7 @@ def fetch_data(url: str, filename: str) -> pd.DataFrame: # returns None if no fi
             print(f'[Attempt 2] Attempting to access file: {full_url}')
             with urlopen(full_url) as response, open(zip_file_name, 'wb') as out_file:
                 shutil.copyfileobj(response, out_file)
-                del response
+                del response# manage memory
             found_file = True
 
         except Exception as ee:
@@ -52,16 +53,18 @@ def fetch_data(url: str, filename: str) -> pd.DataFrame: # returns None if no fi
             
     if found_file:
         zf = zipfile.ZipFile(zip_file_name,'r')
-        df = pd.read_csv(zf.open(zf.namelist()[0]),compression='infer',dtype={"started_at":str,"ended_at":str,"start_station_name":str,"start_station_id":str,"end_station_name":str})
-        zf.close()
+        dtype_dict {"started_at":str,"ended_at":str,"start_station_name":str,"start_station_id":str,"end_station_name":str,"end_station_id":str}
+        df = pd.read_csv(zf.open(zf.namelist()[0]),compression='infer',dtype=dtype_dict)
+        zf.close()# manage memory
+        del zf# manage memory
         return df
     else: 
         return None
-    
-    
 
 @task
 def clean_dfs(df) -> pd.DataFrame:
+    """Update Column names and formats to align between different iterations of the file"""
+    """Update Column names and formats to align between different iterations of the file"""
     is_old_col_format = 'Gender' in df.columns
 
     old_format_rename = {
@@ -111,22 +114,15 @@ def clean_dfs(df) -> pd.DataFrame:
     if is_old_col_format:
         df['ride_id'] = df['started_at'].astype(str) + '-' + df['start_station_id'].astype(str) + '-' + df['bike_id'].astype(str)
         df['is_member'] = df['is_member'] == 'Subscriber'
-        df['rideable_type'] = None
+        df['rideable_type'] = None #doesn't exist in old files
     else:
-        df[['gender','birth_year']] = None
+        df[['gender','birth_year']] = None #not in new files
         df['trip_duration'] = (df['ended_at'] - df['started_at']).dt.total_seconds()
         df['is_member'] =   df['is_member'] == 'member'
-        df['bike_id'] = None
+        df['bike_id'] = None #not in new files
     df = df.astype(col_dtypes,errors='ignore')
 
     return df
-
-# @task
-# def write_df_as_parquet_locally(df:pd.DataFrame , file: str) -> Path:
-#     """Write dataframe as parquet locally"""
-#     path = Path(f"../data/{file}")
-#     df.to_parquet(path,compression='gzip')
-#     return path
 
 @flow
 def write_parquet_to_gcs(df, file_name, year, month) -> None: #path: Path, 
@@ -149,7 +145,7 @@ def el_extract(year:int, month:int) -> None:
         df = clean_dfs(df)
         write_parquet_to_gcs(df,dataset_file_name,year,month) #local_path, 
 
-# While prefect does allow passing variables and parameters, it's easier to just run this for the last month based on datetime
+# Deactivated: While prefect does allow passing variables and parameters, it's easier to just run this for the last month based on datetime
 # For the initial run, we could use list comprehension as follows: 
 #       # import sys
 #       # years = sys.argv[1].split(',') # Alternative years = list(range(2013,2023))
@@ -160,8 +156,10 @@ def el_extract(year:int, month:int) -> None:
 
 @flow 
 def el_parent_flow():
+    """Get year and run flow"""
     yr = datetime.today().year
     mo = datetime.today().month - 1
+
     el_extract(year = yr, month = mo)
 
 if __name__ == '__main__':

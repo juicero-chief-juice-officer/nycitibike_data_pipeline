@@ -15,7 +15,7 @@ New York's Citibike publishes monthly a file that lists every ride in the citibi
 
 ## 0. Project/Environment/Repo set-up
 
-### Naming convention
+### 0.a. Naming convention
 
 First, it's helpful to describe a naming convention. I have a bias toward underscores, but the reach of "big hyphen" and their powerful lobby cannot be understated. We thus use hyphens in naming resources. 
 
@@ -41,19 +41,19 @@ Yielding:
   - Compute Engine Instance: `sbh-nycitibike-pipeline-gceimg-image-usc1-p01-001`,  
   - Cloud Storage Bucket: `sbh-nycitibike-pipeline-gcsdlb-rides-p01`,
   - *Exception:* Service Accounts: `prefect-sa1-[4-character hex]`, (Service accounts are in email form `[sa_name]@[proj_name].iam.gserviceaccount.com` so do not need those descriptors.)
-  - *Exception:* BigQuery Dataset: `gbqdwh_rides` (Datasets may be organized in various ways - by department, by source/stage/final, etc. All data sets are quereied within their GCP Project, so there is no need to include project info.) 
+  - *Exception:* BigQuery Dataset: `gbqdwh_rides` (Datasets may be organized in various ways - by department, by source/stage/final, etc. All data sets are queried within their GCP Project, so there is no need to include project info.) 
 - Prefect
   - Workspace: `[org]-[project]-[component]-[env]-pfct-ws` (`sbh-nycitibike-pipeline-p-pfct-ws`)
   - Block: `[org]-[project]-[component]-[env]-pfct-blk-[block-type]` (`sbh-nycitibike-pipeline-p-pfct-blk-gcp-cred`, `sbh-nycitibike-pipeline-p-pfct-blk-gcs-dlb`, etc.)
   - Scripts/Flows 
 
-### Git
+### 0.b. Git
 https://github.com/github/gitignore/tree/main is a helpful resource for creating your .gitignore.
 
-### Apple Silicon
+### 0.c. Apple Silicon
 If you've recently upgraded from an Intel to an Apple Silicon mac, you may have some issues. Brief discussion [here](https://tktktkt.com). 
 
-### Environment setup
+### 0.d. Environment setup
 
 We used conda to manage virtual environments and poetry to install packages, but this is not strictly necessary. (pip can install via requirements.txt; conda can install via environment.yml.) For poetry we create the `pyproject.toml` file.
 
@@ -66,7 +66,20 @@ poetry install --no-root
 ```
 
 
-## 1. GCP Set Up
+## 1. EL Script
+
+We create a basic EL script that leverages Prefect for one key process and general facilitation. 
+
+The general facilitation comes by labeling our functions with either Flow (`@flow()`)or Task (`@task()`). Each of those can carry arguments (for example `retries`), and help prefect parse and understand the work it will be doing. 
+
+We structure this as follows: 
+- `fetch_data()` (task): downloads the data from a url with urlopen(), unzips it with ZipFile (if necessary) and returns a pandas DataFrame.
+- `clean_dfs()` (task): Updates the column names and runs simple calculations with pandas.
+- `write_parquet_to_gcs()` (flow): Saves the saves the data frame as a parquet file in our Cloud Storage bucket. 
+- `el_extract()` (flow): Calls the fetch, clean and write functions.
+- `el_parent_flow()` (flow): Tells el_extract which month/year to run with.
+
+## 2. GCP Set Up
 This project runs on Google Cloud Platform, because GCP gives new users $300 in credit to be spent over 90 days. (It seems crazy that AWS doesn't offer the same, but I suppose market dominance has its privileges.) You need to set up a ($300 in free credit for the first 90 days) Google Cloud Account. Directions to do so abound, but googling "GCP", going to the first result, and clicking "get started for free" is a pretty good approach. No credit card is required. 
 
 Install [gcloud CLI](https://cloud.google.com/sdk/docs/install-sdk).
@@ -122,15 +135,15 @@ gcloud projects add-iam-policy-binding SA_NAME \
 ```
 
 At this point, we'll pause to set up some other pieces outside of GCP. 
-```
-## 2. Terraform (Infrastructure as Code)
+
+## 3. Terraform (Infrastructure as Code)
 Terraform is used to automate the provisioning (creation) and management of our resources. Terraform could be used for the majority of the GCP work done above, but doing some GCP work via command line or GUI is helpful to understand how GCP works. 
 
 On the other hand, one of the relatively minor, but still helpful, advantages of Terraform is that you can review/manage settings (eg by using a single location for all resources) and naming conventions in a single place. 
 
 Terraform will be used to create the Google Cloud Storage data lake, the Google Big Query data warehouse, the Artifact Registry that will store the Docker Image, and the Virtual Machine that will run the data pipeline.
 
-### Install Terraform
+### 3.a. Install Terraform
 First, install terraform using homebrew:
 ```zsh
 brew tap hashicorp/tap
@@ -142,14 +155,14 @@ Finally enable tab completion by running `touch ~/.bashrc` if running bash, or `
 
 Confirm successful installation by running `terraform -help`.
 
-### Create bucket for terraform state storage. 
+### 3.b. Create bucket for terraform state storage. 
 Terraform can store the terraform state locally or in the cloud. We use cloud storage, but the bucket it is stored in must be created by you, Terraform will not create it. 
 
 ```
 gcloud storage buckets create gs://z_infra_resources
 ```
 
-### Design Infrastructure via Terraform
+### 3.c. Design Infrastructure via Terraform
 
 Terraform can be leveraged quite simply by creating three docs in ??your repo??: `main.tf`, `variables.tf` and `terraform.tfvars`.
 
@@ -167,7 +180,7 @@ terraform.tfvars is where the variables are set.
 Note that almost all GCP pieces can be created via Terraform. For example, instead of running `gcloud artifacts repositories create ...` to create the repo, a repo can be created with the documentation [here](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/artifact_registry_repository). The same goes for compute instance, as demonstrated in the Terraform files.
 
 
-### Build using Terraform
+### 3.d. Build using Terraform
 You will initialize using the .tfs you built, then run plan to review changes in the local file and align with you on an implementation plan. Finally apply approves that implementation plan and tells GCP to run it. 
 
 ```
@@ -177,12 +190,13 @@ terraform -chdir=terraform/ apply
 ```
 *Note: rather than using chdir, you could just cd into the terraform directory.*
 
-One last piece: There is an issue with the terraform main.tf that prevents the Compute instance schedule (aka resource policy) from being added. Pending resolution, that will need to be done through the GUI at https://console.cloud.google.com/iam-admin/iam?authuser=1&project=[[project-name]]. Select the edit icon on `....-compute@developer.gserviceaccount.com` and add the role Compute Admin.
+One last piece: There is an issue with the terraform main.tf that prevents the Compute instance schedule (aka resource policy) from being added. Pending resolution, that will need to be done through the GUI at `https://console.cloud.google.com/iam-admin/iam?authuser=1&project=[[project-name]]`. Select the edit icon on `....-compute@developer.gserviceaccount.com` and add the role Compute Admin.
 
 ```
 gcloud compute instances add-resource-policies sbh-nycitibike-pipeline-gceimg-image-usc1-p01-001 --resource-policies=sbh-nycitibike-pipeline-gcepol-vmsched-usc1-p01
 ```
-### CLI alternatives
+
+### 3.e. CLI alternatives
 
 To create the Artifact Repo: 
 ```#
@@ -198,10 +212,10 @@ gcloud artifacts repositories describe citibike-docker-repo \
 ```
 
 
-## 3. Prefect
+## 4. Prefect
 Prefect can be used locally or via Prefect Cloud to manage/orchestrate data pipeline tasks (an alternative to Apache AirFlow ). It will come to tell Cloud Run to run the flow ....
 
-### Prefect Cloud
+### 4.a. Prefect Cloud
 We need to: 
 * Create Prefect Cloud account
 * Create Prefect GCP Service Account (done previously)
@@ -222,10 +236,10 @@ Create the following blocks:
 * GCP Credentials: Paste in the text of the service account key json you downloaded.
 * Google Cloud Storage (GCS): Paste in the name of the GCS Bucket from your terraform. Link the Credentials Block you just made.
 * GitHub: Linking to your GH repo, optionally using a PAT (if private repo). Use the `GitHub`, not the `GitHub Repository` block type.
-* GCP Cloud Run Job: Image name in format `[[region]]-docker.pkg.dev/[[project-name]]/[[Artifact Registry Repo Name]]/` (eg `us-central1-docker.pkg.dev/sbh-nycitibike-pipeline-main/sbh-nycitibike-pipeline-ar-vmrepo-usc1-p01/`; note that copying from the GCP Repo will exclude the trailing `/`.)
-  * Note this name as it hasn't been assigned yet.
+* GCP Cloud Run Job: Image name in format `[[region]]-docker.pkg.dev/[[project-name]]/[[Artifact Registry Repo Name]]/` (eg `us-central1-docker.pkg.dev/sbh-nycitibike-pipeline-main/sbh-nycitibike-pipeline-ar-vmrepo-usc1-p01/`; note that copying from the GCP Repo will exclude the trailing `/`.) Note that you're best off overshooting on memory, so set the memory to 16 and the memory units to Gi. The default is 512mb.
+  * Note this Artifact Repo name, as it hasn't been assigned yet.
 
-### Build the Prefect deployment for your flow, passing a schedule to the deployment.
+### 4.b. Build the Prefect deployment for your flow, passing a schedule to the deployment.
 
 At this point, everything is in place, but if you look at Prefect you'll see no Flows (as in, Prefect has the infrastructure it needs but doesn't expect to do any work.) You'll need to build a deployment. If you have any issues identifying blocks, you can use `prefect block ls`. 
 
@@ -258,10 +272,10 @@ Add as well as a description: `"Prefect flow via cloud run/docker that will pull
 prefect deployment build prefect/el_from_citibike_to_gcs.py:el_parent_flow --name sbh-nycitibike-prfct-dplmt --storage-block github/sbh-nycitibike-pipeline-p-pfct-blk-ghb-rep  --infra-block cloud-run-job/sbh-nycitibike-pipeline-p-pfct-blk-gcr-job --output el_parent_flow-deployment.yaml --apply
 ```
 
-### Generate an API key.
+### 4.c.Generate an API key.
 Finally, generate and save a [Prefect API](https://app.prefect.cloud/my/api-keys) key. 
 
-## 4. Connect Prefect to Google Compute Engine and build VM
+## 5. Connect Prefect to Google Compute Engine and build VM
 
 If you did not create a compute instance with Terraform, you'll need to do so via CLI (or GUI):
 
@@ -285,7 +299,7 @@ gcloud compute instances create sbh-nycitibike-pipeline-gceimg-image-usc1-p01-00
 --preemptible
 ```
 
-## Set up VM
+## 5.a. Set up VM
 Access that VM via ssh.
 ```zsh
 gcloud compute ssh sbh-nycitibike-pipeline-gceimg-image-usc1-p01-001 --zone=us-central1-a
@@ -297,7 +311,7 @@ Now, within the VM, you have a "factory" (blank) Llinux install and can run what
   * Prefect packages need to be installed
 
 
-### Create installation shell scripts
+### 5.b. Create installation shell scripts
 This is done in two stages via shell scripts. First Anaconda is set up and saved, then Prefect. (In a future iteration, this may be done by Terraform upon creating the instance.)
 
 Create two shell scripts (`touch` creates, `nano` opens for editing): 
@@ -336,13 +350,13 @@ prefect cloud login -k <NSERT_PREFECT_API_KEY>
 echo 'prefect agent start -q default' >> ~/.bashrc
 ```
 
-### Make shell scripts executable
+### 5.c. Make shell scripts executable
 At this point the shell scripts are idle files, rather than executable programs/scripts. You will need to make them both executable by running:
 ```bash
 sudo chmod +x install_pt1.sh install_pt2.sh
 ```
 
-### Run shell scripts
+### 5.d. Run shell scripts
 Run the following commands. The reason there are two separate scripts is that the `source ~/.bashrc` is very hard (for me at least) to replicate within a script (see [this discussion](https://askubuntu.com/a/1041348) for details). Pasting in a simple command is much easier than finding a workaround. This command reloads the shell and allows changes made to it (initializing Anaconda on boot and directing commands to be run via Anaconda) to be accessed.
 
 ```bash
@@ -354,10 +368,10 @@ source ~/.bashrc
 
 You should see the PREFECT AGENT ASCII, as you have added `export prefect agent start -q default` to the startup process (.bashrc) and reloaded the machine.
 
-## 5. Docker
+## 6. Docker
 Download and install Docker from https://www.docker.com/.
 
-### Prepare Docker Image
+### 6.a. Prepare Docker Image
 Create your `Dockerfile`, which will tell Docker how to assemble the Docker image.
 ```Dockerfile
 FROM prefecthq/prefect:2.7.7-python3.9
@@ -381,7 +395,7 @@ pyarrow==10.0.1
 
 The first document is all that is needed to build a docker image. Dockerfile is the default name, but a different file or path can be passed using the `-f` or `--file`. Within the Dockerfile, docker is told to `pip install` the docker-requirements.txt packages. 
 
-### Build Docker image
+### 6.b. Build Docker image
 First, (authenticate)[https://cloud.google.com/artifact-registry/docs/docker/store-docker-container-images#auth]. 
 ```zsh
 gcloud auth configure-docker us-central1-docker.pkg.dev
@@ -398,15 +412,13 @@ docker tag nycitibike-rides-docker:v0 us-central1-docker.pkg.dev/sbh-nycitibike-
 docker push us-central1-docker.pkg.dev/sbh-nycitibike-pipeline-main/sbh-nycitibike-pipeline-ar-vmrepo-usc1-p01/nycitibike-rides-docker:v0
 ```
 
-
 # Complete!
 At this point, the data pipeline should be functional. You should be able to manually trigger the flow from within Prefect ("Quick Run") and see data from the most recent month updated in Cloud Storage. 
 
 # Next Steps
 The next step will be to trigger and run the analytics processes that turn the raw data into a usable analysis. That can easily be done within Prefect, but will be separated into a separate Project. 
 
-
 # Notes/Alternatives
 Ultimately, the work that happens here is a very simple process that could be done in a variety of different ways. 
 
-While the method developed here is, relatively, overwrought for such an application, doing so affords more opportunities to scale, layer in complexity, manage/implement across a team, reproduce, diagnose issues, etc., myriad more simple and more complex solutions abound.
+While the method developed here is, relatively, overwrought for such an application, doing so affords more opportunities to scale, layer in complexity, manage/implement across a team, reproduce, diagnose issues, etc.. There are myriad more simple and more complex potential solutions.
