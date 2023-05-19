@@ -28,9 +28,6 @@ def fetch_data(url: str, filename: str) -> pd.DataFrame: # returns None if no fi
         zip_file_name = f"{tmp_folder}/{filename}{file_extension}"
         full_url = url + file_extension
         print(f'Attempting to access file: {full_url}')
-        print(urlopen(full_url).getcode())
-        print(urlopen(full_url))
-
         with urlopen(full_url) as response:
             print(f'Accessed file: {full_url}')
             with open(zip_file_name, 'wb') as out_file:
@@ -57,7 +54,7 @@ def fetch_data(url: str, filename: str) -> pd.DataFrame: # returns None if no fi
             
     if found_file:
         zf = zipfile.ZipFile(zip_file_name,'r')
-        df = pd.read_csv(zf.open(zf.namelist()[0]),compression='infer')
+        df = pd.read_csv(zf.open(zf.namelist()[0]),compression='infer',dtype={"started_at":str,"ended_at":str,"start_station_name":str,"start_station_id":float,"end_station_name":str},parse_dates=parspd.to_datetime)
         return df
     else: 
         return None
