@@ -160,7 +160,7 @@ resource "google_compute_instance" "default" {
 # sudo apt-get upgrade -y
 # pip install prefect prefect-gcp
 # prefect cloud login -k <INSERT_PREFECT_API_KEY>
-# echo 'export prefect agent start -q default' >> ~/.bashrc" > install_pt2.sh
+# echo 'prefect agent start -q default' >> ~/.bashrc" > install_pt2.sh
 # sudo chmod +x install_pt1.sh install_pt2.sh
 # ./install_pt1.sh
 # source ~/.bashrc

@@ -1,5 +1,6 @@
 from datetime import datetime
 import re
+import os
 import pandas as pd
 from pathlib import Path
 from prefect import flow, task
@@ -13,28 +14,42 @@ import json
 @task(retries=0)
 def fetch_data(url: str, filename: str) -> pd.DataFrame: # returns None if no file available
     """Pull data from web; return dataframe"""
-    dataset_out_file_name = 'data/' + filename + '.csv'
+    # dataset_out_file_name = 'data/' + filename + '.csv'
     found_file: bool
+    tmp_folder = 'data/tmp'
+
+    # Make new directory if none exists:
+    if not os.path.exists(tmp_folder):
+        os.makedirs(tmp_folder)
+
     # We try two different file extensions, as they have changed in the past.
     try:
-        file_extension = '.zip'
-        zip_file_name = 'data/tmp/' + filename + file_extension
+        file_extension = '.csv.zip'
+        zip_file_name = f"{tmp_folder}/{filename}{file_extension}"
         full_url = url + file_extension
         print(f'Attempting to access file: {full_url}')
-        with urlopen(full_url) as response, open(zip_file_name, 'wb') as out_file:
-            shutil.copyfileobj(response, out_file)
+        print(urlopen(full_url).getcode())
+        print(urlopen(full_url))
+
+        with urlopen(full_url) as response:
+            print(f'Accessed file: {full_url}')
+            with open(zip_file_name, 'wb') as out_file:
+                shutil.copyfileobj(response, out_file)
         found_file = True
     except:
         try: #try alternative file extension
-            file_extension = '.csv.zip'
-            zip_file_name = 'data/tmp/' + filename + file_extension
+            file_extension = '.zip'
+            zip_file_name = f"{tmp_folder}/{filename}{file_extension}"
             full_url = url + file_extension
             print(f'[Attempt 2] Attempting to access file: {full_url}')
+            print(urlopen(full_url).getcode())
             with urlopen(full_url) as response, open(zip_file_name, 'wb') as out_file:
                 shutil.copyfileobj(response, out_file)
             found_file = True
 
         except Exception as ee:
+            print("FOUND FILE?")
+            print(found_file)
             if type(ee) == HTTPError:
                 found_file = False
             else:
@@ -120,20 +135,20 @@ def clean_dfs(df) -> pd.DataFrame:
 @flow
 def write_parquet_to_gcs(df, file_name, year, month) -> None: #path: Path, 
     """Send df to GCS as parquet file"""
-    gcs_block = GcsBucket.load("proj_ny_citibike") #name of GCS Bucket Block in Prefect
+    gcs_block = GcsBucket.load("sbh-nycitibike-pipeline-p-pfct--blk-gcs-dlb") #name of GCS Bucket Block from Prefect; there is a typo in mine which I left (--).
     gcs_path = f"data/{year}/{month:02}/{file_name}.parquet"
     gcs_block.upload_from_dataframe(df,to_path = gcs_path,serialization_format = 'parquet_gzip')
 
 @flow
 def el_extract(year:int, month:int) -> None:
-    """Main ETL Function"""
+    """Main EL Function"""
 
     dataset_file_name = f"{year}{month:02}-citibike-tripdata"
     dataset_url = f"https://s3.amazonaws.com/tripdata/{dataset_file_name}"
 
     df = fetch_data(dataset_url, dataset_file_name)
     if df is None:
-        print('No File was Found')
+        print('No File was Found during fetch')
     else: 
         df = clean_dfs(df)
         write_parquet_to_gcs(df,dataset_file_name,year,month) #local_path, 

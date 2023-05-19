@@ -18,7 +18,7 @@ svc_accts_and_roles = {
                         roles=        [
                                         "roles/iam.serviceAccountUser"
                                       ,  "roles/storage.objectCreator"
-                                      , "roles/run.invoker"
+                                      , "roles/run.admin"
                                     #   , "roles/compute.imageUser"
                                       ]
                           }
@@ -27,7 +27,7 @@ svc_accts_and_roles = {
                         roles=        [
                                         "roles/iam.serviceAccountUser"
                                       ,  "roles/storage.admin"
-                                      , "roles/run.invoker"
+                                      , "roles/run.admin"
                                       , "roles/storage.objectViewer"
                                       ]
                           }
