@@ -29,7 +29,6 @@ def fetch_data(url: str, filename: str) -> pd.DataFrame: # returns None if no fi
         full_url = url + file_extension
         print(f'Attempting to access file: {full_url}')
         with urlopen(full_url) as response:
-            print(f'Accessed file: {full_url}')
             with open(zip_file_name, 'wb') as out_file:
                 shutil.copyfileobj(response, out_file)
         found_file = True
@@ -39,14 +38,11 @@ def fetch_data(url: str, filename: str) -> pd.DataFrame: # returns None if no fi
             zip_file_name = f"{tmp_folder}/{filename}{file_extension}"
             full_url = url + file_extension
             print(f'[Attempt 2] Attempting to access file: {full_url}')
-            print(urlopen(full_url).getcode())
             with urlopen(full_url) as response, open(zip_file_name, 'wb') as out_file:
                 shutil.copyfileobj(response, out_file)
             found_file = True
 
         except Exception as ee:
-            print("FOUND FILE?")
-            print(found_file)
             if type(ee) == HTTPError:
                 found_file = False
             else:
@@ -55,6 +51,7 @@ def fetch_data(url: str, filename: str) -> pd.DataFrame: # returns None if no fi
     if found_file:
         zf = zipfile.ZipFile(zip_file_name,'r')
         df = pd.read_csv(zf.open(zf.namelist()[0]),compression='infer',dtype={"started_at":str,"ended_at":str,"start_station_name":str,"start_station_id":str,"end_station_name":str})
+        zf.close()
         return df
     else: 
         return None
