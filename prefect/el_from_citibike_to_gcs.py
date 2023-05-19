@@ -54,7 +54,7 @@ def fetch_data(url: str, filename: str) -> pd.DataFrame: # returns None if no fi
             
     if found_file:
         zf = zipfile.ZipFile(zip_file_name,'r')
-        df = pd.read_csv(zf.open(zf.namelist()[0]),compression='infer',dtype={"started_at":str,"ended_at":str,"start_station_name":str,"start_station_id":float,"end_station_name":str},parse_dates=parspd.to_datetime)
+        df = pd.read_csv(zf.open(zf.namelist()[0]),compression='infer',dtype={"started_at":str,"ended_at":str,"start_station_name":str,"start_station_id":float,"end_station_name":str},parse_dates=pd.to_datetime)
         return df
     else: 
         return None
