@@ -31,6 +31,7 @@ def fetch_data(url: str, filename: str) -> pd.DataFrame: # returns None if no fi
         with urlopen(full_url) as response:
             with open(zip_file_name, 'wb') as out_file:
                 shutil.copyfileobj(response, out_file)
+                del response
         found_file = True
     except:
         try: #try alternative file extension
@@ -40,6 +41,7 @@ def fetch_data(url: str, filename: str) -> pd.DataFrame: # returns None if no fi
             print(f'[Attempt 2] Attempting to access file: {full_url}')
             with urlopen(full_url) as response, open(zip_file_name, 'wb') as out_file:
                 shutil.copyfileobj(response, out_file)
+                del response
             found_file = True
 
         except Exception as ee:
