@@ -422,3 +422,6 @@ The next step will be to trigger and run the analytics processes that turn the r
 Ultimately, the work that happens here is a very simple process that could be done in a variety of different ways. 
 
 While the method developed here is, relatively, overwrought for such an application, doing so affords more opportunities to scale, layer in complexity, manage/implement across a team, reproduce, diagnose issues, etc.. There are myriad more simple and more complex potential solutions.
+
+## References
+These projects are loosely based on capstone/final projects from the very good and accessible [Data Engineering Zoomcamp](https://github.com/DataTalksClub/data-engineering-zoomcamp).
