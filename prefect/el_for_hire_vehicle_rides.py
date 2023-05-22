@@ -59,7 +59,7 @@ if __name__ == '__main__':
     if runtype != 'retro':
         years = [datetime.now().year]
         months = [datetime.now().month-1]
-        colors = = ['yellow','green','fhv']
+        colors = ['yellow','green','fhv']
     else:
         years = list(range(2013,2024))
         months = list(range(1,13))
