@@ -1,9 +1,9 @@
-from pathlib import Path
+# from pathlib import Path
 import pandas as pd
 from prefect import flow, task
 from prefect_gcp.cloud_storage import GcsBucket
-from random import randint
 from prefect.tasks  import task_input_hash
+from random import randint
 from datetime import timedelta, datetime
 
 """
@@ -12,7 +12,7 @@ Simple flow to get taxi and livery cab (aka for-hire vehicles, fhv) trip data in
 
 print('a')
 @task
-def write_gcs(df_in: pd.DataFrame, gcs_path: Path) -> None:
+def write_gcs(df_in: pd.DataFrame, gcs_path) -> None:
     """Upload dataframe to GCS as parquet"""
     gcs_block = GcsBucket.load("sbh-nycitibike-pipeline-p-pfct--blk-gcs-dlb")
     gcs_block.upload_from_dataframe(
@@ -73,4 +73,7 @@ if __name__ == '__main__':
     years = list(range(2013,2024))
     months = list(range(1,13))
     colors = ['yellow','green','fhv']
+    print(years)
+    print(months)
+    print(colors)
     el_parent_flow_trips(years, months, colors)
