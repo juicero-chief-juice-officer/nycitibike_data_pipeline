@@ -53,19 +53,24 @@ def el_parent_flow_trips(
                     el_web_to_gcs_trips(yr,mo,clr)
                 except Exception as e:
                     print(e)
-if __name__ == '__main__':
-    is_runtype_retro = True
 
-    if is_runtype_retro:
-        years = list(range(2013,2024))
-        months = list(range(1,13))
-        colors = ['yellow','green','fhv']
-    
-    else:
-        years = [datetime.now().year]
-        months = [datetime.now().month-1]
-        colors = ['yellow','green','fhv']
-    print(years)
-    print(months)
-    print(colors)
+# is_runtype_retro = True
+
+# if is_runtype_retro:
+    # years = list(range(2013,2024))
+    # months = list(range(1,13))
+    # colors = ['yellow','green','fhv']
+
+# else:
+#     years = [datetime.now().year]
+#     months = [datetime.now().month-1]
+#     colors = ['yellow','green','fhv']
+# print(years)
+# print(months)
+# print(colors)
+
+if __name__ == '__main__':
+    years = list(range(2013,2024))
+    months = list(range(1,13))
+    colors = ['yellow','green','fhv']
     el_parent_flow_trips(years, months, colors)
