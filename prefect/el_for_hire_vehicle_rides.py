@@ -40,9 +40,12 @@ def el_web_to_gcs_trips(year:int, month:int, color:str, gcs_block) -> None:
 
 @flow()
 def el_parent_flow_trips(      
-                    years: list[int] #= [datetime.now().year]
-                    , months: list[int] #= [datetime.now().month-1]
-                    , colors: list[str] #= ['yellow','green']
+                    # years: list[int] #= [datetime.now().year]
+                    # , months: list[int] #= [datetime.now().month-1]
+                    # , colors: list[str] #= ['yellow','green']
+                    years = list(range(2013,2024)),
+                    months = list(range(1,13)),
+                    colors = ['yellow','green','fhv']                    
                     ):
 
     gcs_block = GcsBucket.load("sbh-nycitibike-pipeline-p-pfct--blk-gcs-dlb")
@@ -70,10 +73,11 @@ def el_parent_flow_trips(
 # print(colors)
 
 if __name__ == '__main__':
-    years = list(range(2013,2024))
-    months = list(range(1,13))
-    colors = ['yellow','green','fhv']
-    print(years)
-    print(months)
-    print(colors)
-    el_parent_flow_trips(years, months, colors)
+    el_parent_flow_trips()
+    # years = list(range(2013,2024))
+    # months = list(range(1,13))
+    # colors = ['yellow','green','fhv']
+    # print(years)
+    # print(months)
+    # print(colors)
+    # el_parent_flow_trips(years, months, colors)
