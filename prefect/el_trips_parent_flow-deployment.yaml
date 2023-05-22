@@ -6,11 +6,11 @@ description: null
 version: 6c4ba4462d356b3987e1bad3125b7e96
 # The work queue that will handle this deployment's runs
 work_queue_name: default
-work_pool_name: null
+work_pool_name: default-agent-pool
 tags: []
 parameters: {}
 schedule: null
-is_schedule_active: null
+is_schedule_active: true
 infra_overrides: {}
 
 ###
@@ -58,8 +58,17 @@ infrastructure:
   _is_anonymous: false
   block_type_slug: cloud-run-job
   _block_type_slug: cloud-run-job
-storage: null
-path: /opt/prefect/flows
+storage:
+  repository: https://github.com/juicero-chief-juice-officer/nycitibike_data_pipeline.git
+  reference: null
+  access_token: null
+  include_git_objects: true
+  _block_document_id: 53954bfa-88d1-4236-9098-94840a663151
+  _block_document_name: sbh-nycitibike-pipeline-p-pfct-blk-git-repo
+  _is_anonymous: false
+  block_type_slug: github
+  _block_type_slug: github
+path: ''
 entrypoint: prefect/el_for_hire_vehicle_rides.py:el_parent_flow_trips
 parameter_openapi_schema:
   title: Parameters
@@ -92,4 +101,4 @@ parameter_openapi_schema:
         type: string
   required: null
   definitions: null
-timestamp: '2023-05-22T18:42:00.941574+00:00'
+timestamp: '2023-05-22T18:57:12.827404+00:00'
