@@ -39,9 +39,9 @@ def el_web_to_gcs_trips(year:int, month:int, color:str) -> None:
 
 @flow()
 def el_parent_flow_trips(      
-                    years: list[int] = [datetime.now().year]
-                    , months: list[int] = [datetime.now().month-1]
-                    , colors: list[str] = ['yellow','green']
+                    years: list[int] #= [datetime.now().year]
+                    , months: list[int] #= [datetime.now().month-1]
+                    , colors: list[str] #= ['yellow','green']
                     ):
     print(years)
     print(months)
@@ -54,7 +54,14 @@ def el_parent_flow_trips(
                 except Exception as e:
                     print(e)
 if __name__ == '__main__':
-    years = list(range(2013,2024))
-    months = list(range(1,13))
-    colors = ['yellow','green''fhv']
+    runtype = 'retro'
+
+    if runtype != 'retro':
+        years = [datetime.now().year]
+        months = [datetime.now().month-1]
+        colors = = ['yellow','green','fhv']
+    else:
+        years = list(range(2013,2024))
+        months = list(range(1,13))
+        colors = ['yellow','green','fhv']
     el_parent_flow_trips(years, months, colors)
