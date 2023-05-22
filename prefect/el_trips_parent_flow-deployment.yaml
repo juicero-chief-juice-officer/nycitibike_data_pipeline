@@ -3,7 +3,7 @@
 ###
 name: sbh_fhv_trips
 description: null
-version: 6c4ba4462d356b3987e1bad3125b7e96
+version: 6de0c69287d5021c35fca9635a15d180
 # The work queue that will handle this deployment's runs
 work_queue_name: default
 work_pool_name: default-agent-pool
@@ -76,29 +76,25 @@ parameter_openapi_schema:
   properties:
     years:
       title: years
-      default:
-      - 2023
       position: 0
       type: array
       items:
         type: integer
     months:
       title: months
-      default:
-      - 4
       position: 1
       type: array
       items:
         type: integer
     colors:
       title: colors
-      default:
-      - yellow
-      - green
       position: 2
       type: array
       items:
         type: string
-  required: null
+  required:
+  - years
+  - months
+  - colors
   definitions: null
-timestamp: '2023-05-22T18:57:12.827404+00:00'
+timestamp: '2023-05-22T19:29:53.932267+00:00'
