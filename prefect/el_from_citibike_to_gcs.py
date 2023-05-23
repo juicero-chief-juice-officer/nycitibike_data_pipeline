@@ -53,7 +53,7 @@ def fetch_data(url: str, filename: str) -> pd.DataFrame: # returns None if no fi
             
     if found_file:
         zf = zipfile.ZipFile(zip_file_name,'r')
-        dtype_dict {"started_at":str,"ended_at":str,"start_station_name":str,"start_station_id":str,"end_station_name":str,"end_station_id":str}
+        dtype_dict = {"started_at":str,"ended_at":str,"start_station_name":str,"start_station_id":str,"end_station_name":str,"end_station_id":str}
         df = pd.read_csv(zf.open(zf.namelist()[0]),compression='infer',dtype=dtype_dict)
         zf.close()# manage memory
         del zf# manage memory
@@ -128,7 +128,7 @@ def clean_dfs(df) -> pd.DataFrame:
 def write_parquet_to_gcs(df, file_name, year, month) -> None: #path: Path, 
     """Send df to GCS as parquet file"""
     gcs_block = GcsBucket.load("sbh-nycitibike-pipeline-p-pfct--blk-gcs-dlb") #name of GCS Bucket Block from Prefect; there is a typo in mine which I left (--).
-    gcs_path = f"data/{year}/{month:02}/{file_name}.parquet"
+    gcs_path = f"data/nycitibike/{year}/{month:02}/{file_name}.parquet" #We retroactively added the nycitibike bucket to facilitate including auxiliary datasets, like cabs
     gcs_block.upload_from_dataframe(df,to_path = gcs_path,serialization_format = 'parquet_gzip')
 
 @flow
